@@ -161,19 +161,20 @@ $stmt->close();
                             <div class="card-body text-center">
                                 <!-- แสดง Avatar -->
                                 <?php
-// ตรวจสอบว่าเป็น URL หรือไฟล์ใน server
-$avatar = $user['image'] ?? '';
-if (!empty($avatar)) {
-    if (filter_var($avatar, FILTER_VALIDATE_URL)) {
-        $avatarSrc = $avatar; // เป็น URL ภายนอก
-    } else {
-        $avatarSrc = 'uploads/' . $avatar; // เป็นไฟล์ใน server
-    }
-} else {
-    $avatarSrc = 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3.webp'; // default
-}
-?>
-<img src="<?= htmlspecialchars($avatarSrc) ?>" alt="avatar" class="rounded-circle img-fluid profile-avatar">
+                                // ตรวจสอบว่าเป็น URL หรือไฟล์ใน server
+                                $avatar = $user['image'] ?? '';
+                                if (!empty($avatar)) {
+                                    if (filter_var($avatar, FILTER_VALIDATE_URL)) {
+                                        $avatarSrc = $avatar; // เป็น URL ภายนอก
+                                    } else {
+                                        $avatarSrc = 'uploads/' . $avatar; // เป็นไฟล์ใน server
+                                    }
+                                } else {
+                                    $avatarSrc = 'https://mdbcdn.b-cdn.net/img/Photos/new-templates/bootstrap-chat/ava3.webp'; // default
+                                }
+                                ?>
+                                <img src="<?= htmlspecialchars($avatarSrc) ?>" alt="avatar"
+                                    class="rounded-circle img-fluid profile-avatar">
 
 
                                 <h5 class="my-3"><?= htmlspecialchars($user['user_name']) ?></h5>
