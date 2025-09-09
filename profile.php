@@ -69,7 +69,8 @@ if (isset($_POST['type'], $_POST['value'])) {
         'real_name',
         'user_email',
         'user_phone',
-        'user_status'
+        'user_status',
+        'description'
     ];
 
     if (in_array($type, $allowed)) {
@@ -83,7 +84,7 @@ if (isset($_POST['type'], $_POST['value'])) {
 }
 
 // ดึงข้อมูล user
-$sql = "SELECT user_name, real_name, user_email, user_phone, user_status, facebook, twitter, instagram, github, image 
+$sql = "SELECT user_name, real_name, user_email, user_phone, user_status, facebook, twitter, instagram, github, image, description 
         FROM users WHERE user_id = ?";
 $stmt = $conn->prepare($sql);
 $stmt->bind_param("i", $user_id);
@@ -92,6 +93,7 @@ $result = $stmt->get_result();
 $user = $result->fetch_assoc();
 $stmt->close();
 ?>
+
 
 <!doctype html>
 <html lang="en">
@@ -308,9 +310,55 @@ $stmt->close();
                                 <?php endforeach; ?>
                             </div>
                         </div>
+                        <div class="col-md-12">
+                            <div class="card mb-4 mb-md-0">
+                                <div class="card-body">
+                                    <p class="mb-2"> Description
+                                    </p>
+                                    <div class="border p-3 rounded"
+                                        style="min-height:100px; max-height:300px; overflow-y:auto;">
+                                        <p id="userDescriptionText">
+                                            <?= htmlspecialchars($user['description'] ?? 'No description available.') ?>
+                                        </p>
+                                    </div>
+                                    <div class="text-end mt-2">
+                                        <a href="#" id="editUserDescription" class="text-primary fw-bold">✏️</a>
+                                        <a href="#" id="deleteUserDescription" class="text-danger fw-bold">🗑️</a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <script>
+                            $(document).ready(function () {
+                                // ใช้ modal edit แบบเดียวกับฟิลด์อื่น
+                                $('#editUserDescription').click(function (e) {
+                                    e.preventDefault();
+                                    $('#fieldType').val('description');
+                                    $('#fieldValue').val($('#userDescriptionText').text());
+                                    $('.modal-title').text("Edit Description");
+                                    $('#fieldLabel').text("New Description");
+                                    var editModal = new bootstrap.Modal(document.getElementById('editModal'));
+                                    editModal.show();
+                                });
+                            });
+                            $('#deleteUserDescription').click(function (e) {
+                                e.preventDefault();
+                                if (!confirm("คุณต้องการลบ Description ใช่หรือไม่?")) return;
+                                $.ajax({
+                                    url: '',
+                                    type: 'POST',
+                                    data: { type: 'description', value: '' },
+                                    success: function () {
+                                        location.reload();
+                                    }
+                                });
+                            });
+
+                        </script>
+
                     </div>
                 </div>
-            </div>
         </section>
     </main>
 
