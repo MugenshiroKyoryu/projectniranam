@@ -138,11 +138,15 @@ $stmt->close();
         color: inherit;
         /* รักษาสีเดิม */
     }
+
+    body {
+        background-color: #eeeeee;
+    }
 </style>
 
 <body>
     <main>
-        <section style="background-color: #eee;">
+        <section>
             <div class="container py-5">
 
                 <div class="row">
@@ -326,6 +330,11 @@ $stmt->close();
                                         <a href="#" id="deleteUserDescription" class="text-danger fw-bold">🗑️</a>
                                     </div>
                                 </div>
+                            </div>
+                            <div class="text-end mt-5">
+                                <a href="home_logout_register/logout.php" class="btn btn-danger">
+                                    <i class="bi bi-box-arrow-right"></i> Logout
+                                </a>
                             </div>
                         </div>
 
