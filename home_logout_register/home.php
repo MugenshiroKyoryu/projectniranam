@@ -1,17 +1,31 @@
 <?php
+session_start();
 include("../config/connectdb.php");
 
-$itemsPerPage = 8; // แสดง 12 รายการต่อหน้า
-$page = isset($_GET['page']) ? intval($_GET['page']) : 1; // หน้าเริ่มต้น
+// กำหนดผู้ใช้ปัจจุบัน
+$user_id = $_SESSION['id'] ?? 0;
+
+// การแสดงผล pagination
+$itemsPerPage = 8;
+$page = isset($_GET['page']) ? intval($_GET['page']) : 1;
 $offset = ($page - 1) * $itemsPerPage;
 
-// ดึงจำนวนรวมรายการเพื่อคำนวณ total page
-$totalResult = $conn->query("SELECT COUNT(*) AS total FROM auctions");
+// ดึงจำนวนแจ้งเตือนยังไม่อ่าน
+$notifResult = $conn->query("SELECT COUNT(*) AS unread_count FROM notifications WHERE user_id=$user_id AND is_read=0");
+$notifRow = $notifResult->fetch_assoc();
+$unreadCount = $notifRow['unread_count'] ?? 0;
+
+// ค้นหา
+$searchQuery = $_GET['q'] ?? '';
+$searchSQL = $searchQuery ? " AND a.fish_name LIKE '%" . $conn->real_escape_string($searchQuery) . "%'" : "";
+
+// จำนวนรวมรายการ
+$totalResult = $conn->query("SELECT COUNT(*) AS total FROM auctions WHERE 1=1 $searchSQL");
 $totalRow = $totalResult->fetch_assoc();
 $totalItems = $totalRow['total'];
 $totalPages = ceil($totalItems / $itemsPerPage);
 
-// ดึงรายการประมูลตามหน้า เรียงจากใหม่สุด (auction_id DESC) และราคาล่าสุด
+// ดึงรายการประมูลพร้อมราคาล่าสุด
 $result = $conn->query("
     SELECT a.auction_id, a.fish_name, a.start_price, a.current_price, 
            u.user_name AS seller_name, u.user_id AS seller_id,
@@ -24,14 +38,11 @@ $result = $conn->query("
         WHERE b2.auction_id = a.auction_id
     )
     LEFT JOIN users bu ON b.buyer_id = bu.user_id
-    ORDER BY 
-        COALESCE(a.last_bid_time, a.created_at) DESC
+    WHERE 1=1 $searchSQL
+    ORDER BY COALESCE(a.last_bid_time, a.created_at) DESC
     LIMIT $itemsPerPage OFFSET $offset
 ");
-
-
 ?>
-
 
 <!doctype html>
 <html lang="en">
@@ -40,70 +51,74 @@ $result = $conn->query("
   <title>Fishbid</title>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-
-  <!-- Bootstrap 5.3.2 CSS -->
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 </head>
 
 <body>
-  <!-- Navbar -->
   <nav class="navbar navbar-expand-lg navbar-dark bg-dark">
     <div class="container-fluid">
       <a class="navbar-brand" href="#">🐟Fishbid</a>
-      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
-        aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown">
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item">
-            <a class="nav-link active" aria-current="page" href="#">Home</a>
-          </li>
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-expanded="false">
-              Page 1
-            </a>
-            <ul class="dropdown-menu">
-              <li><a class="dropdown-item" href="#">Page 1-1</a></li>
-              <li><a class="dropdown-item" href="#">Page 1-2</a></li>
-              <li><a class="dropdown-item" href="#">Page 1-3</a></li>
-            </ul>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="#">Page 2</a>
-          </li>
+          <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
         </ul>
 
+        <form class="d-flex me-3" method="GET" action="">
+          <input class="form-control me-2" type="search" name="q" placeholder="ค้นหาปลา..."
+            value="<?= htmlspecialchars($searchQuery) ?>">
+          <button class="btn btn-outline-light" type="submit">ค้นหา</button>
+        </form>
+
         <ul class="navbar-nav">
-          <!-- Profile -->
-          <li class="nav-item">
-            <a class="nav-link" href="../profile.php">
-              <i class="bi bi-person-circle"></i> Profile
+          <!-- Notification -->
+          <li class="nav-item dropdown">
+            <a class="nav-link position-relative" href="#" id="notifDropdown" role="button" data-bs-toggle="dropdown">
+              <i class="bi bi-bell"></i>
+              <?php if ($unreadCount > 0): ?>
+                <span
+                  class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger"><?= $unreadCount ?></span>
+              <?php endif; ?>
             </a>
+            <ul class="dropdown-menu dropdown-menu-end" style="max-height:300px; overflow-y:auto;">
+              <?php
+              $notifList = $conn->query("SELECT message, created_at FROM notifications WHERE user_id=$user_id ORDER BY created_at DESC LIMIT 5");
+              while ($n = $notifList->fetch_assoc()):
+                ?>
+                <li>
+                  <a class="dropdown-item" href="#"><?= htmlspecialchars($n['message']) ?><br>
+                    <small class="text-muted"><?= $n['created_at'] ?></small></a>
+                </li>
+              <?php endwhile; ?>
+              <li>
+                <hr class="dropdown-divider">
+              </li>
+              <li><a class="dropdown-item text-center" href="notifications.php">ดูทั้งหมด</a></li>
+            </ul>
           </li>
-          <!-- Logout -->
-          <li class="nav-item">
-            <a class="nav-link" href="logout.php">
-              <i class="bi bi-box-arrow-right"></i> Logout
-            </a>
+
+          <!-- Profile & Logout -->
+          <li class="nav-item"><a class="nav-link" href="../profile.php"><i class="bi bi-person-circle"></i> Profile</a>
+          </li>
+          <li class="nav-item"><a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a>
           </li>
         </ul>
       </div>
     </div>
   </nav>
 
-  <!-- Carousel -->
   <div class="container py-5">
-    <h3 class="text-center mb-4">Carousel 3 Images Center</h3>
-
+    <h3 class="text-center mb-4">Hello Greater Buyer</h3>
+    <!-- Carousel -->
     <div id="carouselExample" class="carousel slide" data-bs-ride="carousel">
       <div class="carousel-inner">
-
-        <!-- Slide 1 -->
         <div class="carousel-item active">
           <div class="row justify-content-center">
-            <div class="col-md-4 "><img src="https://mpics.mgronline.com/pics/Images/554000000070703.JPEG"
+            <div class="col-md-4"><img src="https://mpics.mgronline.com/pics/Images/554000000070703.JPEG"
                 class="d-block rounded" style="width:400px; height:250px;"></div>
             <div class="col-md-4"><img src="https://mpics.mgronline.com/pics/Images/556000000169401.JPEG"
                 class="d-block rounded" style="width:400px; height:250px;"></div>
@@ -112,8 +127,6 @@ $result = $conn->query("
                 class="d-block rounded" style="width:400px; height:250px;"></div>
           </div>
         </div>
-
-        <!-- Slide 2 -->
         <div class="carousel-item">
           <div class="row justify-content-center">
             <div class="col-md-4"><img
@@ -127,90 +140,67 @@ $result = $conn->query("
                 class="d-block rounded" style="width:400px; height:250px;"></div>
           </div>
         </div>
-
       </div>
-
-      <!-- ปุ่มเลื่อน -->
-      <button class="carousel-control-prev" type="button" data-bs-target="#carouselExample" data-bs-slide="prev">
-        <span class="carousel-control-prev-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Previous</span>
-      </button>
-      <button class="carousel-control-next" type="button" data-bs-target="#carouselExample" data-bs-slide="next">
-        <span class="carousel-control-next-icon" aria-hidden="true"></span>
-        <span class="visually-hidden">Next</span>
-      </button>
+      <button class="carousel-control-prev" type="button" data-bs-target="#carouselExample" data-bs-slide="prev"><span
+          class="carousel-control-prev-icon"></span></button>
+      <button class="carousel-control-next" type="button" data-bs-target="#carouselExample" data-bs-slide="next"><span
+          class="carousel-control-next-icon"></span></button>
     </div>
-
   </div>
-  <div class="container">
+
+  <div class="container mt-5">
     <div class="row">
-          <div class="container mt-5">
-            <div class="row">
-              <?php while ($row = $result->fetch_assoc()): ?>
-                <div class="col-md-3 mb-4">
-                  <div class="card h-100 shadow-sm">
-                    <div class="card-body d-flex flex-column">
-                      <h5 class="card-title"><?= $row['fish_name'] ?></h5>
-                      <p class="card-text">
-                        ราคาเริ่มต้น: ฿<?= $row['start_price'] ?><br>
-                        ราคาล่าสุด: <strong>฿<?= $row['current_price'] ?? $row['start_price'] ?></strong><br>
-                        ผู้ขาย: <?= $row['seller_name'] ?><br>
-                        <?php if ($row['buyer_name']): ?>
-                          ผู้เสนอราคาล่าสุด: <?= $row['buyer_name'] ?>
-                        <?php else: ?>
-                          ยังไม่มีผู้เสนอราคา
-                        <?php endif; ?>
-                      </p>
-
-                      <!-- ปุ่มเสนอราคา -->
-                      <form method="POST" action="deal_bid.php" class="mt-auto">
-                        <input type="hidden" name="auction_id" value="<?= $row['auction_id'] ?>">
-                        <div class="input-group mb-2">
-                          <input type="number" step="0.01" name="bid_amount" class="form-control"
-                            placeholder="ใส่ราคาเสนอ" required>
-                          <button class="btn btn-success" type="submit">เสนอราคา</button>
-                        </div>
-                      </form>
-
-                      <!-- ปุ่มดูโปรไฟล์ผู้ขาย -->
-                      <a href="/niranam/profile.php?user_id=<?= $row['seller_id'] ?>"
-                        class="btn btn-primary btn-sm w-100">
-                        ดูโปรไฟล์ผู้ขาย
-                      </a>
-
-                    </div>
-                  </div>
+      <?php while ($row = $result->fetch_assoc()): ?>
+        <div class="col-md-3 mb-4">
+          <div class="card h-100 shadow-sm">
+            <div class="card-body d-flex flex-column">
+              <h5 class="card-title"><?= $row['fish_name'] ?></h5>
+              <p class="card-text">
+                ราคาเริ่มต้น: ฿<?= $row['start_price'] ?><br>
+                ราคาล่าสุด: <strong>฿<?= $row['current_price'] ?? $row['start_price'] ?></strong><br>
+                ผู้ขาย: <?= $row['seller_name'] ?><br>
+                <?php if ($row['buyer_name']): ?>ผู้เสนอราคาล่าสุด:
+                  <?= $row['buyer_name'] ?>  <?php else: ?>ยังไม่มีผู้เสนอราคา<?php endif; ?>
+              </p>
+              <form method="POST" action="deal_bid.php" class="mt-auto">
+                <input type="hidden" name="auction_id" value="<?= $row['auction_id'] ?>">
+                <div class="input-group mb-2">
+                  <input type="number" step="0.01" name="bid_amount" class="form-control" placeholder="ใส่ราคาเสนอ"
+                    required>
+                  <button class="btn btn-success" type="submit">เสนอราคา</button>
                 </div>
-              <?php endwhile; ?>
+              </form>
+              <a href="/niranam/profile.php?user_id=<?= $row['seller_id'] ?>"
+                class="btn btn-primary btn-sm w-100">ดูโปรไฟล์ผู้ขาย</a>
             </div>
           </div>
-
-
-
         </div>
-      </div>
-
-
-
+      <?php endwhile; ?>
     </div>
-<!-- Pagination -->
-<nav aria-label="Page navigation example">
-  <ul class="pagination justify-content-center mt-4">
-    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
-      <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
-        <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
-      </li>
-    <?php endfor; ?>
-  </ul>
-</nav>
-
   </div>
 
+  <nav aria-label="Page navigation">
+    <ul class="pagination justify-content-center mt-4">
+      <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+        <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
+          <a class="page-link"
+            href="?page=<?= $i ?><?= $searchQuery ? '&q=' . urlencode($searchQuery) : '' ?>"><?= $i ?></a>
+        </li>
+      <?php endfor; ?>
+    </ul>
+  </nav>
 
-
-  <!-- Bootstrap JS + icons -->
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <script>
+    $(function () {
+      $('#notifDropdown').on('click', function () {
+        // ส่ง AJAX mark read
+        $.post('', { action: 'mark_read' }, function (res) {
+          $('#notifBadge').remove(); // ลบ badge ทันที
+        }, 'json');
+      });
+    });
+  </script>
 </body>
 
 </html>
