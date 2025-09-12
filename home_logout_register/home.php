@@ -1,18 +1,37 @@
 <?php
 include("../config/connectdb.php");
-// ดึงรายการประมูลทั้งหมด
+
+$itemsPerPage = 8; // แสดง 12 รายการต่อหน้า
+$page = isset($_GET['page']) ? intval($_GET['page']) : 1; // หน้าเริ่มต้น
+$offset = ($page - 1) * $itemsPerPage;
+
+// ดึงจำนวนรวมรายการเพื่อคำนวณ total page
+$totalResult = $conn->query("SELECT COUNT(*) AS total FROM auctions");
+$totalRow = $totalResult->fetch_assoc();
+$totalItems = $totalRow['total'];
+$totalPages = ceil($totalItems / $itemsPerPage);
+
+// ดึงรายการประมูลตามหน้า เรียงจากใหม่สุด (auction_id DESC) และราคาล่าสุด
 $result = $conn->query("
     SELECT a.auction_id, a.fish_name, a.start_price, a.current_price, 
-           u.user_name AS seller_name, u.image AS fish_image, u.user_id AS seller_id,
+           u.user_name AS seller_name, u.user_id AS seller_id,
            b.bid_amount, b.created_at, bu.user_name AS buyer_name
     FROM auctions a
     JOIN users u ON a.seller_id = u.user_id
-    LEFT JOIN bids b ON a.auction_id = b.auction_id
+    LEFT JOIN bids b ON b.bid_amount = (
+        SELECT MAX(b2.bid_amount)
+        FROM bids b2
+        WHERE b2.auction_id = a.auction_id
+    )
     LEFT JOIN users bu ON b.buyer_id = bu.user_id
-    WHERE b.bid_amount = (SELECT MAX(b2.bid_amount) FROM bids b2 WHERE b2.auction_id = a.auction_id)
-       OR b.bid_amount IS NULL
+    ORDER BY 
+        COALESCE(a.last_bid_time, a.created_at) DESC
+    LIMIT $itemsPerPage OFFSET $offset
 ");
+
+
 ?>
+
 
 <!doctype html>
 <html lang="en">
@@ -125,101 +144,11 @@ $result = $conn->query("
   </div>
   <div class="container">
     <div class="row">
-      <div class="col-md-3">
-        <div class="card" style="width: 18rem;">
-          <img class="card-img-top" src="..." alt="Card image cap">
-          <div class="card-body">
-            <h5 class="card-title">Card title</h5>
-            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's
-              content.</p>
-            <a href="#" class="btn btn-primary">Go somewhere</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card" style="width: 18rem;">
-          <img class="card-img-top" src="..." alt="Card image cap">
-          <div class="card-body">
-            <h5 class="card-title">Card title</h5>
-            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's
-              content.</p>
-            <a href="#" class="btn btn-primary">Go somewhere</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card" style="width: 18rem;">
-          <img class="card-img-top" src="..." alt="Card image cap">
-          <div class="card-body">
-            <h5 class="card-title">Card title</h5>
-            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's
-              content.</p>
-            <a href="#" class="btn btn-primary">Go somewhere</a>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-md-3">
-        <div class="card" style="width: 18rem;">
-          <img class="card-img-top" src="..." alt="Card image cap">
-          <div class="card-body">
-            <h5 class="card-title">Card title</h5>
-            <p class="card-text">Some quick example text to build on the card title and make up the bulk of the card's
-              content.</p>
-            <a href="#" class="btn btn-primary">Go somewhere</a>
-          </div>
-        </div>
-      </div>
-      <div class="container mt-5">
-        <div class="row">
-          <div class="col-md-3">
-            <div class="card" style="width: 18rem;">
-              <img class="card-img-top" src="..." alt="Card image cap">
-              <div class="card-body">
-                <h5 class="card-title">Card title</h5>
-                <p class="card-text">Some quick example text to build on the card title and make up the bulk of the
-                  card's
-                  content.</p>
-                <a href="#" class="btn btn-primary">Go somewhere</a>
-              </div>
-            </div>
-          </div>
-
-
-          <div class="col-md-3">
-            <div class="card" style="width: 18rem;">
-              <img class="card-img-top" src="..." alt="Card image cap">
-              <div class="card-body">
-                <h5 class="card-title">Card title</h5>
-                <p class="card-text">Some quick example text to build on the card title and make up the bulk of the
-                  card's
-                  content.</p>
-                <a href="#" class="btn btn-primary">Go somewhere</a>
-              </div>
-            </div>
-          </div>
-
-          <div class="col-md-3">
-            <div class="card" style="width: 18rem;">
-              <img class="card-img-top" src="..." alt="Card image cap">
-              <div class="card-body">
-                <h5 class="card-title">Card title</h5>
-                <p class="card-text">Some quick example text to build on the card title and make up the bulk of the
-                  card's
-                  content.</p>
-                <a href="#" class="btn btn-primary">Go somewhere</a>
-              </div>
-            </div>
-          </div>
-
           <div class="container mt-5">
             <div class="row">
               <?php while ($row = $result->fetch_assoc()): ?>
                 <div class="col-md-3 mb-4">
                   <div class="card h-100 shadow-sm">
-                    <img src="<?= $row['fish_image'] ?>" class="card-img-top" alt="<?= $row['fish_name'] ?>">
                     <div class="card-body d-flex flex-column">
                       <h5 class="card-title"><?= $row['fish_name'] ?></h5>
                       <p class="card-text">
@@ -264,6 +193,16 @@ $result = $conn->query("
 
 
     </div>
+<!-- Pagination -->
+<nav aria-label="Page navigation example">
+  <ul class="pagination justify-content-center mt-4">
+    <?php for ($i = 1; $i <= $totalPages; $i++): ?>
+      <li class="page-item <?= ($i == $page) ? 'active' : '' ?>">
+        <a class="page-link" href="?page=<?= $i ?>"><?= $i ?></a>
+      </li>
+    <?php endfor; ?>
+  </ul>
+</nav>
 
   </div>
 

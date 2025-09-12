@@ -33,7 +33,9 @@ $stmt->bind_param("iid", $auction_id, $buyer_id, $bid_amount);
 $stmt->execute();
 
 // 3. อัปเดตราคาล่าสุด
-$conn->query("UPDATE auctions SET current_price=$bid_amount WHERE auction_id=$auction_id");
+// 3. อัปเดตราคาล่าสุด
+$conn->query("UPDATE auctions SET current_price=$bid_amount, last_bid_time=NOW() WHERE auction_id=$auction_id");
+
 
 // 4. สร้างแจ้งเตือนให้ seller
 $message = "มีการเสนอราคาใหม่ ฿$bid_amount ในการประมูลของคุณ";
