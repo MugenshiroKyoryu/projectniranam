@@ -160,22 +160,32 @@ body { background-color: #eeeeee; }
 
                     <!-- Social links แบบเดียวกับหน้า user profile -->
                     <div class="list-group list-group-flush rounded-3 mt-3">
-                        <?php
-                        $socials = [
-                            'facebook' => ['url' => $fish['seller_facebook'] ?? '', 'icon' => 'bi-facebook text-primary'],
-                            'twitter' => ['url' => $fish['seller_twitter'] ?? '', 'icon' => 'bi-twitter text-info'],
-                            'instagram' => ['url' => $fish['seller_instagram'] ?? '', 'icon' => 'bi-instagram text-danger'],
-                            'github' => ['url' => $fish['seller_github'] ?? '', 'icon' => 'bi-github text-dark']
-                        ];
-                        foreach ($socials as $key => $data):
-                            if (!empty($data['url'])):
-                                $username = getSocialUsername($data['url']);
-                        ?>
-                            <a href="<?= htmlspecialchars($data['url']) ?>" target="_blank" class="list-group-item d-flex align-items-center">
-                                <i class="bi <?= $data['icon'] ?> fs-4 me-2"></i> <?= htmlspecialchars($username) ?>
-                            </a>
-                        <?php endif; endforeach; ?>
-                    </div>
+    <?php
+    $socials = [
+        'facebook' => ['url' => $fish['seller_facebook'] ?? '', 'icon' => 'bi-facebook text-primary'],
+        'twitter' => ['url' => $fish['seller_twitter'] ?? '', 'icon' => 'bi-twitter text-info'],
+        'instagram' => ['url' => $fish['seller_instagram'] ?? '', 'icon' => 'bi-instagram text-danger'],
+        'github' => ['url' => $fish['seller_github'] ?? '', 'icon' => 'bi-github text-dark']
+    ];
+    foreach ($socials as $key => $data):
+        if (!empty($data['url'])):
+            // ตรวจสอบว่าเป็น URL จริงหรือไม่
+            if (filter_var($data['url'], FILTER_VALIDATE_URL)) {
+                $username = getSocialUsername($data['url']);
+                echo '<a href="' . htmlspecialchars($data['url']) . '" target="_blank" class="list-group-item d-flex align-items-center">';
+                echo '<i class="bi ' . $data['icon'] . ' fs-4 me-2"></i> ' . htmlspecialchars($username);
+                echo '</a>';
+            } else {
+                // ถ้าไม่ใช่ URL แสดงเป็นข้อความธรรมดา ไม่กดได้
+                echo '<div class="list-group-item d-flex align-items-center">';
+                echo '<i class="bi ' . $data['icon'] . ' fs-4 me-2"></i> ' . htmlspecialchars($data['url']);
+                echo '</div>';
+            }
+        endif;
+    endforeach;
+    ?>
+</div>
+
 
                     <?php if(!empty($fish['seller_description'])): ?>
                         <p class="mt-3"><?= nl2br(htmlspecialchars($fish['seller_description'])) ?></p>
