@@ -78,7 +78,7 @@ if (isset($_GET['mark_read_ajax']) && $_GET['mark_read_ajax'] == 1) {
       </button>
       <div class="collapse navbar-collapse" id="navbarNavDropdown">
         <ul class="navbar-nav me-auto mb-2 mb-lg-0">
-          <li class="nav-item"><a class="nav-link active" href="#">Home</a></li>
+          
         </ul>
         <form class="d-flex me-3" method="GET" action="">
           <input class="form-control me-2" type="search" name="q" placeholder="ค้นหาปลา..."
@@ -111,12 +111,13 @@ if (isset($_GET['mark_read_ajax']) && $_GET['mark_read_ajax'] == 1) {
               <li><a class="dropdown-item text-center" href="?mark_read=1">อ่านทั้งหมด</a></li>
             </ul>
           </li>
+          <li class="nav-item"><a class="nav-link" href="../add_fish&auction.php"><ii class="bi bi-arrow-bar-up"></i>
+              add</a>
+          </li>
           <li class="nav-item"><a class="nav-link" href="../profile.php"><i class="bi bi-person-circle"></i> Profile</a>
           </li>
+          
           <li class="nav-item"><a class="nav-link" href="logout.php"><i class="bi bi-box-arrow-right"></i> Logout</a>
-          </li>
-          <li class="nav-item"><a class="nav-link" href="../add_fish&auction.php"><i class="bi bi-box-arrow-right"></i>
-              add</a>
           </li>
         </ul>
       </div>
